@@ -10,8 +10,14 @@ const {
     Menu,
     BrowserWindow
 } = remote;
-var handleNames = {}
+var handleNames = localStorage.getItem('handleNames')||{};
+
 var nanasiindex = 0;
+
+function saveHandleNames(){
+    localStorage.setItem('handleNames',JSON.stringify(handleNames))
+}
+
 function appendComment({
     text,
     name
@@ -83,16 +89,19 @@ ipcRenderer.on('message', function(event, message) {
         })
         return
     }
+    console.log(message)
     var userId = $message.attr('user_id');
     var text = $(message).text();
     var name = null;
     if (/(＠|@|by)/.test(text)) {
-        var name = comment.split(comment.match(/(＠|@|by)/g).slice(-1)[0]).slice(-1)[0];
+        var name = text.split(text.match(/(＠|@|by)/g).slice(-1)[0]).slice(-1)[0];
         handleNames[userId] = name;
         appendComment({text,name})
+        return;
     }
     if (userId in handleNames) {
         name = handleNames[userId];
+        saveHandleNames();
         appendComment({text,name})
     } else {
         if (!isNaN(userId)) {
@@ -100,11 +109,13 @@ ipcRenderer.on('message', function(event, message) {
             $.get(`http://seiga.nicovideo.jp/api/user/info?id=${userId}`, (data) => {
                 name = ($(data).find('nickname').text());
                 handleNames[userId] = name;
+                saveHandleNames();
                 appendComment({text,name})
             })
         } else {
             name = `野良ナース${nanasiindex++}`;
             handleNames[userId] = name;
+            saveHandleNames();
             appendComment({text,name})
             //184ついてる場合
         }
